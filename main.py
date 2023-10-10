@@ -70,17 +70,13 @@ UPLOAD_DIR = "/data/tmp"
 @app.post("/v1/audio/transcriptions")
 async def transcriptions(
     model: str = Form(...),
-    file: UploadFile = File(...),
+    file: str = Form(...),
     response_format: Optional[str] = Form(None),
 ):
     if response_format in ["verbose_json"]:
         st = time.time()
 
     assert model == "whisper-ch"
-    if file is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=f"Bad Request, bad file"
-        )
     if response_format is None:
         response_format = "json"
     if response_format not in ["json", "text", "verbose_json"]:
@@ -89,15 +85,7 @@ async def transcriptions(
             detail=f"Bad Request, bad response_format, supported formats are json, verbose_json and text",
         )
 
-    Path(UPLOAD_DIR).mkdir(exist_ok=True, parents=True)
-    upload_path = Path(UPLOAD_DIR, file.filename)
-
-    with open(upload_path, "wb+") as upload_file:
-        shutil.copyfileobj(file.file, upload_file)
-
-    segments = transcribe(audio_path=str(upload_path), **WHISPER_DEFAULT_SETTINGS)
-
-    os.remove(upload_path)
+    segments = transcribe(audio_path=str(file), **WHISPER_DEFAULT_SETTINGS)
 
     segment_dicts = []
 
