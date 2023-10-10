@@ -1,11 +1,11 @@
 import os
-import shutil
-import time
+import asyncio
+import requests
 from functools import lru_cache
 from pathlib import Path
 from typing import Iterable, Optional
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile, status
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile, status, Request
 from faster_whisper import WhisperModel
 from faster_whisper.transcribe import Segment
 
@@ -24,6 +24,7 @@ app = FastAPI()
 # }
 
 MODEL_DATA_DIR = "/data/cache"
+MEDIA_DIR = os.getenv("MEDIA_ROOT")
 
 
 @lru_cache(maxsize=1)
@@ -64,29 +65,11 @@ WHISPER_DEFAULT_SETTINGS = {
     "language": "de",
     "beam_size": 5,
 }
-UPLOAD_DIR = "/data/tmp"
 
-
-@app.post("/v1/audio/transcriptions")
-async def transcriptions(
-    model: str = Form(...),
-    file: str = Form(...),
-    response_format: Optional[str] = Form(None),
-):
-    if response_format in ["verbose_json"]:
-        st = time.time()
-
-    assert model == "whisper-ch"
-    if response_format is None:
-        response_format = "json"
-    if response_format not in ["json", "text", "verbose_json"]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Bad Request, bad response_format, supported formats are json, verbose_json and text",
-        )
-
-    segments = transcribe(audio_path=str(file), **WHISPER_DEFAULT_SETTINGS)
-
+async def transcribe_post(postback_uri: str, audio_path: str):
+    print(f"{audio_path}: Starting transcription")
+    segments = transcribe(audio_path, **WHISPER_DEFAULT_SETTINGS)
+    
     segment_dicts = []
 
     for segment in segments:
@@ -99,16 +82,22 @@ async def transcriptions(
             }
         )
 
-    if response_format in ["text", "json"]:
-        text = " ".join([seg["text"].strip() for seg in segment_dicts])
+    data = {"segments": segment_dicts}
+    r = requests.post(url=postback_uri, json=data)
+    print(r.status_code, r.reason)
 
-    if response_format in ["verbose_json"]:
-        et = time.time()
-        elapsed_time = et - st
-        result_dict = {"segments": segment_dicts, "elapsed_seconds": elapsed_time}
-        return result_dict
+@app.post("/v1/audio/transcriptions")
+async def transcriptions(
+    request: Request,
+    model: str = Form(...),
+    file: str = Form(...)
+):
+    
+    print(f"Received request for {file}")
+    postback_uri = request.headers.get("LanguageServicePostbackUri")
 
-    if response_format in ["text"]:
-        return text
+    assert model == "whisper-ch"
+    loop = asyncio.get_running_loop()
+    loop.create_task(transcribe_post(postback_uri, audio_path=str(file)))
 
-    return {"text": text}
+    return "Transcription started"
