@@ -75,14 +75,13 @@ async def transcribe_post(postback_uri: str, audio_path: str):
     for segment in segments:
         segment_dicts.append(
             {
-                "text": segment.text,
+                "transcript": segment.text,
                 "start": segment.start,
                 "end": segment.end,
-                "words": segment.words,
             }
         )
 
-    data = {"segments": segment_dicts}
+    data = {"content": segment_dicts}
     r = requests.post(url=postback_uri, json=data)
     print(r.status_code, r.reason)
 
