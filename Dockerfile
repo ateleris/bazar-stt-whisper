@@ -16,6 +16,9 @@ RUN pip install --no-cache-dir -r /requirements.txt
 
 ENV MODEL=large-v2
 ENV QUANTIZATION=int8
+ENV LARGE_INT8=https://www.dropbox.com/scl/fi/4zpcstlzh6h9n0gdzed5x/large-v2_231020_int8.tar?rlkey=uhbq716l8n4da95xo32o1gf12&dl=1
+ENV LARGE_FLOAT16=https://www.dropbox.com/scl/fi/qhejs90rkj8061siq71id/large-v2_231020_float16.tar?rlkey=wkme9djr6bnndsukhdwwfjqm9&dl=1
+
 
 # Copy the current directory contents into the container at /app
 COPY main.py /app/main.py
