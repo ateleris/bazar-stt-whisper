@@ -1,0 +1,26 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  REGISTRY_NAME: acrakszxtpf6oksuuv2
+  APP_NAME: ateleris/bazar-stt-whisper
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Log into registry
+      uses: docker/login-action@v2
+      with:
+        registry: ${{ env.REGISTRY_NAME }}.azurecr.io
+        username: ${{ secrets.AZURE_ACR_CREDENTIALS_USER }}
+        password: ${{ secrets.AZURE_ACR_CREDENTIALS_PASSWORD }}
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag ${{ env.APP_NAME }}:${GITHUB_SHA::8}
+    - name: Docker image push to ACR
+      run: docker push ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.APP_NAME }}:${GITHUB_SHA::8}
