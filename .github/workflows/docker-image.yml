@@ -21,6 +21,6 @@ jobs:
         username: ${{ secrets.AZURE_ACR_CREDENTIALS_USER }}
         password: ${{ secrets.AZURE_ACR_CREDENTIALS_PASSWORD }}
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag ${{ env.APP_NAME }}:${GITHUB_SHA::8}
+      run: docker build . --file Dockerfile --tag ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.APP_NAME }}:${GITHUB_SHA::8}
     - name: Docker image push to ACR
       run: docker push ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.APP_NAME }}:${GITHUB_SHA::8}
