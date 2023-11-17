@@ -79,28 +79,35 @@ def transcribe(
 
 
 async def transcribe_post(postback_uri: str, audio_path: str):
-    print(f"{audio_path}: Starting transcription")
-    segments = transcribe(audio_path, **WHISPER_DEFAULT_SETTINGS)
-
-    segment_dicts = []
-
-    for segment in segments:
-        segment_dicts.append(
-            {
-                "transcript": segment.text,
-                "start": segment.start,
-                "end": segment.end,
-            }
-        )
-
-    data = {"content": segment_dicts}
     try:
+        if not os.path.exists(audio_path):
+            print(f"File not found: {audio_path}")
+            r = requests.post(url=postback_uri, json=None)
+            r.raise_for_status()
+            return
+
+        print(f"{audio_path}: Starting transcription")
+        segments = transcribe(audio_path, **WHISPER_DEFAULT_SETTINGS)
+
+        segment_dicts = []
+
+        for segment in segments:
+            segment_dicts.append(
+                {
+                    "transcript": segment.text,
+                    "start": segment.start,
+                    "end": segment.end,
+                }
+            )
+
+        data = {"content": segment_dicts}
         print(f"{audio_path}: Posting transcription to {postback_uri}")
         r = requests.post(url=postback_uri, json=data)
         r.raise_for_status()
         print(f"Deleting {audio_path}")
         os.remove(audio_path)
-    except requests.exceptions.HTTPError as e:
+
+    except Exception as e:
         print(e)
         os.remove(audio_path)
 
@@ -117,8 +124,6 @@ async def transcriptions(
     assert model == "whisper-ch"
     loop = asyncio.get_running_loop()
     loop.create_task(transcribe_post(postback_uri, audio_path=str(file)))
-
-    return "Transcription started"
 
 
 @app.post("/v1/audio/transcriptions/azure-file")
@@ -151,8 +156,6 @@ async def transcriptions_azure_file(
         print(e)
         os.remove(path)
 
-    return "Transcription started"
-
 
 @app.post("/v1/audio/transcriptions/url")
 async def transcriptions_url(
@@ -179,8 +182,6 @@ async def transcriptions_url(
     except Exception as e:
         print(e)
         os.remove(path)
-
-    return "Transcription started"
 
 
 @app.get("/healthz", status_code=200)
